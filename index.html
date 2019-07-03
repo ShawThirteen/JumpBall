@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Document</title>
+<style>
+	#canvas {
+		background: #ccc;
+	}
+</style>
+</head>
+<body>
+
+<canvas id="canvas" width="1300" height="800"></canvas>
+<script>
+class Ball {
+	/*
+	* @params gravity [int] 像素/s^2
+	*/
+	constructor (gravity, quality) {
+		this.directionY = this.directionX = 1;			// 运动方向，1代表正向向下向右，-1代表负向向上,向左
+		this.gravity = gravity || 98;		// 加速度 9.8px/s^2
+		this.quality = quality || parseFloat(Math.random() * 10).toFixed(2);		// 质量
+		this.speedY = 0;	// y轴速度
+		this.speedX = 0;	// x轴速度
+		this.elastic = 0.8;	// 弹性系数
+	}
+	setDirection (x, y) {
+		this.directionX = x >= 0 ? 1 : -1;
+		this.directionY = y >= 0 ? 1 : -1;
+	}
+	setPosition (x, y, endY) {
+		this.X = x;
+		this.Y = y;
+		this.endY = endY;
+		this.endX = endY;
+	}
+
+	getPosition () {
+		return {
+			x: this.X,
+			y: this.Y
+		}
+	}
+	/*
+	* @params frame [int] 刷新率，frame帧/s
+	*/
+	movement (frame, cb) {
+		var _this = this;
+
+		(frame == frame - 0) && (frame = Math.abs(frame)) || (frame = 1);	// 非0，非负数字
+
+		_this.delta = 1 / frame || 1 / 13; 	// 每帧耗时,单位秒
+		_this._changePosition('Y');
+		// _this._changePosition('X');
+		cb && cb({
+			x: _this.X,
+			y: _this.Y,
+			speedX: _this.speedX,
+			speedY: _this.speedY
+		});
+	}
+	/*
+	* @params dir [string] 指向
+	*/	
+	_changePosition (dir) {
+		var _this = this;
+		var delta = _this.delta;
+		var increDiatance = delta * _this['speed' + dir] + 1 / 2 * _this.gravity * delta * delta;	// 每帧Y轴移动距离	
+		var remainDistance = _this['end' + dir] - _this[dir];		// 当前帧可位移的最大值
+		var increSpeed = delta * _this.gravity;		// 单位时间速度增加
+		var factIncreSpeed = null;		// 实际加速数目
+
+		if (_this['direction' + dir] > 0) {	// 正向才有触底
+			if (increDiatance + _this[dir] >= _this['end' + dir] - 0.01) {		// 当前帧要超出距离,将要触底
+				// 如果下帧触底,则速度不能达到最大值
+				var factIncreSpeed = remainDistance / increDiatance * delta * _this.gravity;	// 当前实际加速数
+
+				if (factIncreSpeed < 0.1 && _this['speed' + dir] <= 6 * increSpeed) {
+					_this[dir] = _this.endY;
+					_this['speed' + dir] = 0;
+					clearInterval(_this.moveTimer);
+				} else {
+					_this['speed' + dir] += _this['direction' + dir] * factIncreSpeed;		// 实际加速数目
+					_this['speed' + dir] *= _this.elastic;		// 触底反弹后，速度降低
+					_this[dir] += _this['direction' + dir] * Math.min(increDiatance, remainDistance);	//  位移
+					_this['direction' + dir] *= -1; // 换方向
+				}	
+								
+			} else {
+				// console.log('这里应该是有bug', _this[dir], remainDistance, _this.speedY);
+				_this['speed' + dir] += increSpeed;	// 在元素没有碰到底部时,正常加速
+				_this[dir] += _this['direction' + dir] * increDiatance;
+			}
+
+		} else {	// 逆向
+			_this['speed' + dir] += _this['direction' + dir] * increSpeed;
+			_this[dir] += _this['direction' + dir] * increDiatance;
+
+			if (_this['speed' + dir] <= 0) { // 触顶
+				_this['speed' + dir] = 0;
+				_this['direction' + dir] *= -1; // 换方向
+			}
+		}
+	}
+}
+
+var ball = new Ball(300);
+var ctx = document.getElementById('canvas').getContext('2d');
+var canWidth = 300, canHeight = 200;
+var startX = 20, startY = 50, endY = 500, r = 10;
+
+function draw (x, y, r, color) {
+	// ctx.clearRect(0, 0, 1300, 800);
+	ctx.beginPath();
+	ctx.fillStyle = color || 'red';
+	ctx.arc(x, y, r, 0, Math.PI * 2, true);
+	ctx.closePath();
+	ctx.fill();
+}
+
+// draw(startX, startY);
+
+var ballArr = [];
+for (var i = 0; i < 1; i++) {
+	var jsd = parseInt(Math.random() * 200) + 200; 	// 加速度
+	var ball = new Ball(jsd);
+
+	var zhen = parseInt(Math.random() * 20) + 20;	// 帧率
+	var startX = parseInt(Math.random() * 1300);	// x
+	var startY = parseInt(Math.random() * 300) + 100;	// y
+
+	ball.setPosition(startX, startY, rendom(0) + 500);
+	ball.color = 'rgb('+ [rendom(255), rendom(255), rendom(255)].join(',') +')';
+	ball.zhen = zhen;
+	ball.r = rendom(20) + 5
+	ballArr.push(ball);
+}
+
+function rendom (num) {
+	return parseInt(Math.random() * num)
+}
+
+setInterval(function () {
+	ctx.clearRect(0, 0, 1300, 800);
+	for (var i = 0, len = ballArr.length; i < len; i++) {
+		var cur = ballArr[i];
+		cur.movement(cur.zhen, function (data) {
+			var x = data.x, y = data.y;
+			draw(x, y, cur.r, cur.color);
+		})
+	}
+}, 13)
+
+</script>
+</body>
+</html>
