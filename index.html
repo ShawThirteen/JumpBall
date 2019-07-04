@@ -15,6 +15,7 @@
 
 class Point {
 	/*
+	* all keys of params arg
 	* @params gravityX [int] x轴的重力加速度,像素每2次方单位时间
 	* @params gravityY [int] y轴的重力加速度,像素每2次方单位时间
 	* @params elasticX [int] x轴的弹性系数
@@ -29,50 +30,73 @@ class Point {
 	* @params endY [int] y轴的碰撞点(转向点)
 	*/
 	constructor (arg) {
-		var {
-			gravityX = 9.8,
-			gravityY = 9.8,
-			elasticX = 0.85,
-			elasticY = 0.85,
-			directionX = 1,
-			directionY = 1,
-			speedX = 0,
-			speedY = 0,
-			startX = 0,
-			startY = 0,
-			endX = 0,
-			endY = 0
-		} = {...arg};
-
-		this.gravityX = gravityX;
-		this.gravityY = gravityY;
-		this.elasticX = elasticX;
-		this.elasticY = elasticY;
-		this.directionX = directionX;
-		this.directionY = directionY;
-		this.speedX = speedX;
-		this.speedY = speedY;
-		this.startX = startX;
-		this.startY = startY;
-		this.endX = endX;
-		this.endY = endY;
-		this.setPosition(startX, startY);
+		this.initProps(arg);		// 初始化各种属性值
 	}
+
 	/*
 	* 设置当前点的位置
 	* @params x [int] x坐标
 	* @params y [int] y坐标
 	*/
 	setPosition (x, y) {
-		this.x = x;
-		this.y = y;
+		this.setValue('x', x);
+		this.setValue('y', y);
 	}
+
+	initProps (arg) {
+		// int 值的保存数组
+		this.intKeyArr = [
+			'gravityX', 'gravityY', 
+			'elasticX', 'elasticY', 
+			'directionX', 'directionY', 
+			'speedX', 'speedY',
+			'startX', 'startY',
+			'endX', 'endY',
+			'x', 'y'
+		];
+
+		var {
+			gravityX = 9.8, gravityY = 9.8,
+			elasticX = 1, 	elasticY = 1,
+			directionX = 1, directionY = 1,
+			speedX = 0, 	speedY = 0,
+			startX = 0,		startY = 0,
+			endX = 0,		endY = 0
+		} = {...arg};
+
+		var intKeyArr = this.intKeyArr;
+		for (var i = 0, len = intKeyArr.length; i < len; i++) {
+			this[intKeyArr[i]] = 0;
+		}
+
+		this.setValue('gravityX', gravityX), 		this.setValue('gravityY', gravityY);
+		this.setValue('elasticX', elasticX), 		this.setValue('elasticY', elasticY);
+		this.setValue('directionX', directionX), 	this.setValue('directionY', directionY);
+		this.setValue('speedX', speedX), 			this.setValue('speedY', speedY);
+		this.setValue('startX', startX), 			this.setValue('startY', startY);
+		this.setValue('endX', endX), 				this.setValue('endY', endY);
+		this.setPosition(startX, startY);
+	}
+	setValue (key, value) {
+		if (key in this) {
+			var result = this._checkValue(key, value);
+			if (result.result) {
+				this[key] = value;
+				return;
+			} else {
+				throw new Error('the key ' + key + ' except to be ' + result.except + ' , but got ' + result.error);
+			}
+		}  else {
+			throw new Error(key + ' is not have be incloud by class ' + Point.name);
+		}
+	}
+
 	/*
 	* 设置当前运动方向
 	*/
 	setDirection (x, y) {
-		this.directionX *= x;
-		this.directionY *= y;
+		this.setValue('directionX', this.directionX * x);
+		this.setValue('directionY', this.directionY * y);
 	}
 	/*
 	* 物体改变运动状态
@@ -80,15 +104,50 @@ class Point {
 	* @params callback [function] 每次运动后的回调函数
 	*/
 	movement (frame, callback) {
+		var _this = this;
 		(frame == frame - 0) && (frame = Math.abs(frame)) || (frame = 1);	// 非0，非负数字
 		this.delta = 1 / frame || 1 / 13; 	// 每帧耗时,单位秒
-		this._changePositionY(callback);
+		this._changePositionY();
+
+		// 抛出必要信息, 位置,速度,指向,加速度,弹性系数,结束位置
+		var callbackKeyArr = [
+			'gravityX', 'gravityY', 
+			'elasticX', 'elasticY', 
+			'directionX', 'directionY', 
+			'speedX', 'speedY',
+			'startX', 'startY',
+			'endX', 'endY',
+			'x', 'y'
+		];
+		var callbackObj = {};
+		for (var i = 0, len = callbackKeyArr.length; i < len; i++) {
+			callbackObj[callbackKeyArr[i]] = _this[callbackKeyArr[i]];
+		}
+		callback && callback(callbackObj);
 	}
 
 	/*
+	* @return [bool] 当前值是否允许设置
+	*/
+	_checkValue (key, value) {
+		var intKeyArr = this.intKeyArr;
+		var result = {
+			result: false,
+			except: null,
+			error: typeof value
+		}
+
+		if (intKeyArr.indexOf(key) > -1) {		// 当前传入值是int
+			result.result = (String(value) - 0 == value);
+			result.except = 'number';
+		}
+
+		return result;
+	}
+	/*
 	* y轴方向上的物体运动
 	*/
-	_changePositionY (callback) {
+	_changePositionY () {
 		var _this = this;
 		var t = this.delta,
 			gravity = this.gravityY,
@@ -107,11 +166,13 @@ class Point {
 				var t1 = (-1 * speed + Math.sqrt(speed * speed + 2 * gravity * recentHeight)) / gravity;
 				var t2 = (-1 * speed - Math.sqrt(speed * speed + 2 * gravity * recentHeight)) / gravity;
 				var recentDuring = Math.max(t1, t2).toFixed(8);	// 当前实际运动的时间,保留8位有效数字
-				_this.y += recentHeight;
+				_this.y = endY;		// 到达底部
 				speed += gravity * recentDuring;	// 实际运动的速度
 
 				speed *= elastic;	// 乘以弹性系数,做速度损耗
-				_this.setDirection(1, -1);	// 发生碰撞之后, 方向改变了
+
+				// 反向运动应该由客户端设置
+				// _this.setDirection(1, -1);	// 发生碰撞之后, 方向改变了
 
 			} else {	// 可以正常进行
 				_this.y += currentDistance;	// 不发生碰撞,继续位移
@@ -121,8 +182,7 @@ class Point {
 			if (speed < 0.01) {	// 当物体的速度趋近与0,我们认为物体静止了
 				_this.y = endY;
 				speed = 0;	// 静止
-				_this.directionY = 1;	// 恢复默认方向
-				console.log('正向静止');
+				// _this.directionY = 1;	// 恢复默认方向 // 方向的设置应该由用户控制
 			}
 			_this.speedY = speed;	// 保存数据
 		} else {	// 负向
@@ -133,19 +193,13 @@ class Point {
 				var recentHeight = 1 / 2 * gravity * recentDuring * recentDuring;
 				_this.y -= recentHeight;
 				speed = 0;
-				_this.directionY = 1;	// 恢复默认方向
+				// _this.directionY = 1;	// 恢复默认方向 方向设置应该由用户控制
 			} else {
 				_this.y -= currentDistance;  // 此次停留的位置
 				speed -= gravity * t;
 			}
 			_this.speedY = speed;	// 保存数据
 		}
-		callback && callback({
-			x: _this.x,
-			y: _this.y,
-			directionY: _this.directionY,
-			speedY: _this.speedY
-		});
 	}
 }
 
@@ -164,82 +218,32 @@ function draw (x, y) {
 var ball = new Point({endY: 300});
 ball.setPosition(startX, startY);
 var timer = setInterval(function () {
+	nextDraw()
+}, 5)
+
+function nextDraw () {
 	ctx.clearRect(0, 0, 500, 500);
-	ball.movement(10, function (data) {
+	ball.setValue('elasticY', 0.9);
+	ball.movement(40, function (data) {
+		if (data.speedY == 0) {	// 当速度为0时
+			if (data.directionY == 1) {	// 正向速度为0,说明静止了
+				log(data);
+			} else {	// 负向为0,则调换方向
+				ball.setDirection(1, -1);	// 转向
+			}
+		}
+
+		if (data.y == data.endY) {	// 到底部了
+			// ball.setValue('elasticY', data.elasticY *= 0.9);
+			ball.setDirection(1, -1);	// 转向
+		}
+		// console.log(2, log(data));
 		draw(data.x, data.y)
 	})
-}, 10)
+}
 
-
-
-draw(startX, startY);
-var time = 0;
-
-/*var timer = setInterval(function () {
-	ctx.clearRect(0, 0, 500, 500);
-	nextDraw();
-}, 30)*/
-function nextDraw () {
-	if (direction > 0) {	// 正向
-		var currentDistance = speed * t + 1 / 2 * gravity * t * t;	// 当前这一个单位时间内，下落的距离
-
-		if (startY + currentDistance >= endY) {	// 到底了
-			
-			console.log('当前位置', startY - 10);
-			console.log('距离底部', endY - startY);
-			console.log('current speed', speed);
-			console.log('正常应该下落多少', currentDistance);
-
-
-			// 下一步要碰到地面了,
-			var recentHeight = endY - startY;	// 本次实际的位移量
-			var t1 = (-1 * speed + Math.sqrt(speed * speed + 2 * gravity * recentHeight)) / gravity;
-			var t2 = (-1 * speed - Math.sqrt(speed * speed + 2 * gravity * recentHeight)) / gravity;
-			var recentDuring = Math.max(t1, t2).toFixed(8);	// 保留8位有效数字
-			startY += recentHeight;
-			speed += gravity * recentDuring;	// 实际坠地的速度
-
-			speed *= elastic;	// 乘以弹性系数,做速度损耗
-			console.log('当然下落高度', startY - 10, '; 当前速度:', speed);
-			console.log('当前单位时间下落了', recentHeight, '到底了');
-
-			// 到底部之后,球反弹了, 方向改变了
-			direction = -1;
-
-			if (speed < 0.01) {	// 当物体下落的速度趋近与0,我们认为物体静止了
-				startY = endY;
-				speed = 0;
-				direction = 1;
-				clearInterval(timer);
-			}
-
-		} else {	// 可以正常进行
-			startY += currentDistance;	// 1. 先是下落位移
-			speed += gravity * t;			// 下落后，在计算新速度
-			
-			console.log('当然下落高度', startY - 10, '; 当前速度:', speed);
-			console.log('当前单位时间下落了', currentDistance)
-		}
-	} else {	// 负向
-		var currentDistance = speed * t - 1 / 2 * gravity * t * t;	// 此次位移的距离
-		var singleSpeed = gravity * t;		// 当前单位时间内削减的速度;
-		if (speed - singleSpeed <= 0) {		// 触发顶部
-
-			var recentDuring = (speed / gravity).toFixed(8);	// 此次实际运动的时间
-			var recentHeight = 1 / 2 * gravity * recentDuring * recentDuring;
-			startY -= recentHeight;
-			speed = 0;
-			direction = 1;
-			console.log('下一步就会速度小于0');
-			console.log('当前速度是', speed);
-			console.log('当前位置是', startY);
-		} else {
-			startY -= currentDistance;  // 此次停留的位置
-			speed -= gravity * t;
-		}
-	}
-	draw(startX, startY);
-	time++;
+function log (obj) {
+	console.log(JSON.stringify(obj, null, 2))
 }
 
 </script>
