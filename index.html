@@ -18,8 +18,8 @@ class Point {
 	* all keys of params arg
 	* @params gravityX [int] x轴的重力加速度,像素每2次方单位时间
 	* @params gravityY [int] y轴的重力加速度,像素每2次方单位时间
-	* @params elasticX [int] x轴的弹性系数
-	* @params elasticY [int] y轴的弹性系数
+	* @params fricationX [int] x轴的摩擦系数,系数越大,速度减少越快
+	* @params fricationY [int] y轴的摩擦系数,系数越大,速度减少越快
 	* @params directionX [int] x轴运动方向,正向(向右)为1
 	* @params directionY [int] y轴运动方向,正向(向上)为-1
 	* @params speedX [int] x轴初始方向速度
@@ -28,9 +28,32 @@ class Point {
 	* @params startY [int] 物体起始存在的y轴点坐标
 	* @params endX [int] x轴的碰撞点(转向点)
 	* @params endY [int] y轴的碰撞点(转向点)
+	* @params nolinearX [boolean] x轴摩擦系数非线性
+	* @params nolinearY [boolean] y轴摩擦系数非线性
 	*/
 	constructor (arg) {
 		this.initProps(arg);		// 初始化各种属性值
+	}
+
+	initProps (arg) {
+		var {
+			gravityX = 9.8, gravityY = 9.8,
+			fricationX = 1, fricationY = 1,
+			directionX = 1, directionY = 1,
+			speedX = 0, 	speedY = 0,
+			startX = 0,		startY = 0,
+			endX = 0,		endY = 0,
+			nolinearX = true, nolinearY = true
+		} = {...arg};
+
+		this.setValue('gravityX', gravityX), 		this.setValue('gravityY', gravityY);
+		this.setValue('fricationX', fricationX), 	this.setValue('fricationY', fricationY);
+		this.setValue('directionX', directionX), 	this.setValue('directionY', directionY);
+		this.setValue('speedX', speedX), 			this.setValue('speedY', speedY);
+		this.setValue('startX', startX), 			this.setValue('startY', startY);
+		this.setValue('endX', endX), 				this.setValue('endY', endY);
+		this.setValue('nolinearX', nolinearX), 		this.setValue('nolinearY', nolinearY);
+		this.setPosition(startX, startY);
 	}
 
 	/*
@@ -43,52 +66,37 @@ class Point {
 		this.setValue('y', y);
 	}
 
-	initProps (arg) {
-		// int 值的保存数组
-		this.intKeyArr = [
-			'gravityX', 'gravityY', 
-			'elasticX', 'elasticY', 
-			'directionX', 'directionY', 
-			'speedX', 'speedY',
-			'startX', 'startY',
-			'endX', 'endY',
-			'x', 'y'
-		];
-
-		var {
-			gravityX = 9.8, gravityY = 9.8,
-			elasticX = 1, 	elasticY = 1,
-			directionX = 1, directionY = 1,
-			speedX = 0, 	speedY = 0,
-			startX = 0,		startY = 0,
-			endX = 0,		endY = 0
-		} = {...arg};
-
-		var intKeyArr = this.intKeyArr;
-		for (var i = 0, len = intKeyArr.length; i < len; i++) {
-			this[intKeyArr[i]] = 0;
-		}
-
-		this.setValue('gravityX', gravityX), 		this.setValue('gravityY', gravityY);
-		this.setValue('elasticX', elasticX), 		this.setValue('elasticY', elasticY);
-		this.setValue('directionX', directionX), 	this.setValue('directionY', directionY);
-		this.setValue('speedX', speedX), 			this.setValue('speedY', speedY);
-		this.setValue('startX', startX), 			this.setValue('startY', startY);
-		this.setValue('endX', endX), 				this.setValue('endY', endY);
-		this.setPosition(startX, startY);
-	}
 	setValue (key, value) {
-		if (key in this) {
-			var result = this._checkValue(key, value);
-			if (result.result) {
-				this[key] = value;
-				return;
-			} else {
-				throw new Error('the key ' + key + ' except to be ' + result.except + ' , but got ' + result.error);
+		var result = this._checkValue(key, value);
+		if (result.result) {
+			switch (key) {	// 特殊处理
+				case 'speedY':
+				case 'speedX': 	// 私有属性存储
+					this['_' + key] = result.value;
+					this[key] = result.value;
+					break;
+				case 'fricationY':
+				case 'fricationX':
+					this[key] = Math.min(Math.abs(result.value), 1);
+					break;
+				default:
+					this[key] = result.value;
+					break;
 			}
-		}  else {
-			throw new Error(key + ' is not have be incloud by class ' + Point.name);
+			return;
+		} else {
+			switch (result.errorCode) {
+				case 101:
+					throw new Error(key + ' is not have be incloud by class ' + Point.name);
+					break;
+				case 201:
+					throw new Error('the key ' + key + ' except to be ' + result.except + ' , but got ' + result.error);
+					break;
+				default:
+					break;
+			}
 		}
+		
 	}
 
 	/*
@@ -109,10 +117,10 @@ class Point {
 		this.delta = 1 / frame || 1 / 13; 	// 每帧耗时,单位秒
 		this._changePositionY();
 
-		// 抛出必要信息, 位置,速度,指向,加速度,弹性系数,结束位置
+		// 抛出必要信息, 位置,速度,指向,加速度,摩擦系数,结束位置
 		var callbackKeyArr = [
 			'gravityX', 'gravityY', 
-			'elasticX', 'elasticY', 
+			'fricationX', 'fricationY', 
 			'directionX', 'directionY', 
 			'speedX', 'speedY',
 			'startX', 'startY',
@@ -130,16 +138,44 @@ class Point {
 	* @return [bool] 当前值是否允许设置
 	*/
 	_checkValue (key, value) {
-		var intKeyArr = this.intKeyArr;
+		// int 值的保存数组
+		var intKeyArr = [
+			'gravityX', 'gravityY', 
+			'fricationX', 'fricationY', 
+			'directionX', 'directionY', 
+			'speedX', 'speedY',
+			'startX', 'startY',
+			'endX', 'endY',
+			'x', 'y'
+		];
+
+		var booleanArr = [
+			'nolinearX', 'nolinearY'
+		]
+		// var intKeyArr = this.intKeyArr;
+		/*
+		* description errorCode
+		* 101 当前属性不存在
+		* 200 ok
+		* 201 当前属性设置类型错误
+		*/
 		var result = {
 			result: false,
 			except: null,
-			error: typeof value
+			type: typeof value,
+			errorCode: 200 
 		}
 
 		if (intKeyArr.indexOf(key) > -1) {		// 当前传入值是int
 			result.result = (String(value) - 0 == value);
 			result.except = 'number';
+			result.value = value;
+		} else if (booleanArr.indexOf(key) > -1) {
+			result.result = true;
+			result.except = 'bool';
+			result.value = Boolean(value);
+		} else {
+			result.errorCode = 101;
 		}
 
 		return result;
@@ -150,61 +186,66 @@ class Point {
 	_changePositionY () {
 		var _this = this;
 		var t = this.delta,
-			gravity = this.gravityY,
+			gravity = this.gravityY * this.directionY,		
 			endY = this.endY,
 			speed = this.speedY,
-			elastic = this.elasticY
+			// _speed = this._speedY,
+			nolinear = this.nolinearY,
+			frication = this.fricationY;	// 单位时间的摩擦系数
 
-		if (_this.directionY > 0) {	// 正向向下
+		var currentDistance = speed * t + 1 / 2 * gravity * t * t ;	// 当前这一个单位时间内，运动的距离
+		var currentDistanceAbs = currentDistance;		// 存一下绝对值
+		var recentDistance = Math.abs(_this.y - endY);		// 本次位移距离终点实际的距离值
 
-			var currentDistance = speed * t + 1 / 2 * gravity * t * t;	// 当前这一个单位时间内，下落的距离
-
-			if (_this.y + currentDistance >= endY) {	// 将会发生碰撞
-				
-				// 下一步要发生碰撞
-				var recentHeight = endY - _this.y;	// 本次实际的位移量
-				var t1 = (-1 * speed + Math.sqrt(speed * speed + 2 * gravity * recentHeight)) / gravity;
-				var t2 = (-1 * speed - Math.sqrt(speed * speed + 2 * gravity * recentHeight)) / gravity;
-				var recentDuring = Math.max(t1, t2).toFixed(8);	// 当前实际运动的时间,保留8位有效数字
-				_this.y = endY;		// 到达底部
-				speed += gravity * recentDuring;	// 实际运动的速度
-
-				speed *= elastic;	// 乘以弹性系数,做速度损耗
-
-				// 反向运动应该由客户端设置
-				// _this.setDirection(1, -1);	// 发生碰撞之后, 方向改变了
-
-			} else {	// 可以正常进行
-				_this.y += currentDistance;	// 不发生碰撞,继续位移
-				speed += gravity * t;			// 位移后,计算新速度
-			}
-
-			if (speed < 0.01) {	// 当物体的速度趋近与0,我们认为物体静止了
-				_this.y = endY;
-				speed = 0;	// 静止
-				// _this.directionY = 1;	// 恢复默认方向 // 方向的设置应该由用户控制
-			}
-			_this.speedY = speed;	// 保存数据
-		} else {	// 负向
-			var currentDistance = speed * t - 1 / 2 * gravity * t * t;	// 此次位移的距离
-			var singleSpeed = gravity * t;		// 当前单位时间内削减的速度;
-			if (speed - singleSpeed <= 0) {		// 物体将要在y轴方向静止
-				var recentDuring = (speed / gravity).toFixed(8);	// 此次实际运动的时间
-				var recentHeight = 1 / 2 * gravity * recentDuring * recentDuring;
-				_this.y -= recentHeight;
-				speed = 0;
-				// _this.directionY = 1;	// 恢复默认方向 方向设置应该由用户控制
-			} else {
-				_this.y -= currentDistance;  // 此次停留的位置
-				speed -= gravity * t;
-			}
-			_this.speedY = speed;	// 保存数据
+		if (currentDistance < 0) {
+			currentDistance = recentDistance;
 		}
+		
+		currentDistance *= _this.directionY;
+
+		if (currentDistanceAbs >= recentDistance) {	// 碰撞,一旦发生碰撞当前点的位置就定了
+			var sqrt4ac = Math.sqrt(speed * speed + 2 * Math.abs(gravity) * recentDistance);	// sqrt(b^2 - 4ac)
+			var recentDuring = 0;	// 当前实际运动的时间,保留8位有效数字
+
+			if (gravity == 0) {	// 匀速运动
+				recentDuring = (recentDistance / speed)// .toFixed(8);
+			} else {
+				var t1 = (-1 * speed + sqrt4ac) / Math.abs(gravity);
+				var t2 = (-1 * speed - sqrt4ac) / Math.abs(gravity);
+				recentDuring = Math.max(t1, t2)// .toFixed(8);	
+			}
+
+			_this.y = endY;
+			speed += gravity * recentDuring;	// 碰撞时的实际速度
+
+			if (nolinear) {		// 碰撞后做速度损耗
+				speed *= 1 - frication * recentDuring / t;
+			} else {
+				speed = speed - frication * _speed * recentDuring / t;
+			}
+
+		} else {		// 当前没碰撞
+			_this.y += currentDistance;
+			speed += gravity * t;
+
+			if (nolinear) {
+				speed *= 1 - frication * t;
+			} else {
+				speed = speed - frication * _speed * t;
+			}
+		}
+		
+		if (speed < 0.01) {	// 当物体的速度趋近与0,我们认为物体静止了
+			speed = 0;	// 静止
+		}
+
+		_this.speedY = speed;	// 保存数据
+		return;
 	}
 }
 
 var ctx = document.getElementById('canvas').getContext('2d');
-var elastic = 0.9;
+var frication = 0.9;
 var gravity = 1 / 1;	// 10px/s^2
 var startX = 100, startY = 10, r = 5, speed = 0, t = 1, endY = 500, direction = 1;
 function draw (x, y) {
@@ -215,31 +256,37 @@ function draw (x, y) {
 	ctx.fill();
 }
 
-var ball = new Point({endY: 300});
+var ball = new Point({endY: endY});
 ball.setPosition(startX, startY);
+var count = 10;
+draw(startX, startY)
 var timer = setInterval(function () {
-	nextDraw()
-}, 5)
+	// nextDraw()
+}, 500)
 
+
+ball.setValue('fricationY', 0.00)
+ball.setValue('speedY', 20);
+ball.setValue('gravityY', 10);
+var x = 100;
 function nextDraw () {
-	ctx.clearRect(0, 0, 500, 500);
-	ball.setValue('elasticY', 0.9);
-	ball.movement(40, function (data) {
-		if (data.speedY == 0) {	// 当速度为0时
-			if (data.directionY == 1) {	// 正向速度为0,说明静止了
-				log(data);
-			} else {	// 负向为0,则调换方向
-				ball.setDirection(1, -1);	// 转向
-			}
+	// ctx.clearRect(0, 0, 500, 500);
+	ball.movement(1, function (data) {
+		log(data);
+		// ball.setValue('x', x+=4)
+		if (data.y == endY) {
+			ball.setDirection(1, -1);	// 设置转向
+			ball.setValue('endY', startY);
+			ball.setValue('x', x += 20);
+		} else if (data.y == startY) {
+			ball.setDirection(1, -1);	// 设置转向
+			ball.setValue('endY', endY);
+			ball.setValue('x', x += 20);
 		}
-
-		if (data.y == data.endY) {	// 到底部了
-			// ball.setValue('elasticY', data.elasticY *= 0.9);
-			ball.setDirection(1, -1);	// 转向
-		}
-		// console.log(2, log(data));
-		draw(data.x, data.y)
+		draw(data.x, data.y);
+		
 	})
+	return 0;
 }
 
 function log (obj) {
