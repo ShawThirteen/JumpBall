@@ -204,19 +204,21 @@ class Point {
 		currentDistance *= _this.directionY;
 
 		if (currentDistanceAbs >= recentDistance) {	// 碰撞,一旦发生碰撞当前点的位置就定了
-			var sqrt4ac = Math.sqrt(speed * speed + 2 * Math.abs(gravity) * recentDistance);	// sqrt(b^2 - 4ac)
+			var sqrt4ac = Math.sqrt(speed * speed + 2 * gravity * recentDistance);	// sqrt(b^2 - 4ac)
 			var recentDuring = 0;	// 当前实际运动的时间,保留8位有效数字
 
-			if (gravity == 0) {	// 匀速运动
-				recentDuring = (recentDistance / speed)// .toFixed(8);
-			} else {
-				var t1 = (-1 * speed + sqrt4ac) / Math.abs(gravity);
-				var t2 = (-1 * speed - sqrt4ac) / Math.abs(gravity);
-				recentDuring = Math.max(t1, t2)// .toFixed(8);	
-			}
-
 			_this.y = endY;
-			speed += gravity * recentDuring;	// 碰撞时的实际速度
+			if (gravity == 0) {	// 匀速运动
+				recentDuring = (recentDistance / speed);
+			} else {
+				var t1 = (-1 * speed + sqrt4ac);
+				var t2 = (-1 * speed - sqrt4ac);
+				recentDuring = Math.max(t1, t2);	
+				// 碰撞时的实际速度,这里不用乘以加速度,因为已经约分掉了
+				speed += recentDuring;	
+				// 因为计算结果是无限小数,所以会有精度损失,保留12有效数字，减少误差
+				speed.toFixed(12);	// 保留12位有效小数
+			}
 
 			if (nolinear) {		// 碰撞后做速度损耗
 				speed *= 1 - frication * recentDuring / t;
@@ -247,7 +249,7 @@ class Point {
 var ctx = document.getElementById('canvas').getContext('2d');
 var frication = 0.9;
 var gravity = 1 / 1;	// 10px/s^2
-var startX = 100, startY = 10, r = 5, speed = 0, t = 1, endY = 500, direction = 1;
+var startX = 100, startY = 10, r = 5, speed = 0, t = 1, endY = 305, direction = 1;
 function draw (x, y) {
 	ctx.beginPath();
 	ctx.fillStyle = 'red';
@@ -261,7 +263,7 @@ ball.setPosition(startX, startY);
 var count = 10;
 draw(startX, startY)
 var timer = setInterval(function () {
-	// nextDraw()
+	nextDraw()
 }, 500)
 
 
@@ -270,18 +272,18 @@ ball.setValue('speedY', 20);
 ball.setValue('gravityY', 10);
 var x = 100;
 function nextDraw () {
-	// ctx.clearRect(0, 0, 500, 500);
+	ctx.clearRect(0, 0, 500, 500);
 	ball.movement(1, function (data) {
 		log(data);
 		// ball.setValue('x', x+=4)
 		if (data.y == endY) {
 			ball.setDirection(1, -1);	// 设置转向
 			ball.setValue('endY', startY);
-			ball.setValue('x', x += 20);
+			// ball.setValue('x', x += 20);
 		} else if (data.y == startY) {
 			ball.setDirection(1, -1);	// 设置转向
 			ball.setValue('endY', endY);
-			ball.setValue('x', x += 20);
+			// ball.setValue('x', x += 20);
 		}
 		draw(data.x, data.y);
 		
