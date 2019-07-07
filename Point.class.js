@@ -64,12 +64,6 @@ class Point {
 					this['_' + key] = result.value;
 					this[key] = result.value;
 					break;
-				case 'elasticX':
-				case 'elasticY':
-				case 'fricationY':
-				case 'fricationX':
-					this[key] = Math.min(Math.abs(result.value), 1);
-					break;
 				default:
 					this[key] = result.value;
 					break;
@@ -81,7 +75,7 @@ class Point {
 					throw new Error(key + ' is not have be incloud by class ' + Point.name);
 					break;
 				case 201:
-					throw new Error('the key ' + key + ' except to be ' + result.except + ' , but got ' + result.error);
+					throw new Error('the key ' + key + ' except to be ' + result.except + ' , but got ' + typeof result.value + '(' + result.value + ')');
 					break;
 				default:
 					break;
@@ -102,22 +96,28 @@ class Point {
 	* @return [bool] 当前值是否允许设置
 	*/
 	_checkValue (key, value) {
+		var uitl = this._publicUtil();
 		// int 值的保存数组
-		var intKeyArr = [
+		var numberArr = [
 			'gravityX', 'gravityY', 
-			'fricationX', 'fricationY', 
 			'directionX', 'directionY', 
 			'speedX', 'speedY',
 			'startX', 'startY',
 			'endX', 'endY',
-			'elasticX',	'elasticY',
 			'x', 'y'
+		];
+
+
+		// 0-1的浮点型数据
+		var zeroToOne = [
+			'fricationX', 'fricationY', 
+			'elasticX',	'elasticY'
 		];
 
 		var booleanArr = [
 			'nolinearX', 'nolinearY'
 		]
-		// var intKeyArr = this.intKeyArr;
+
 		/*
 		* description errorCode
 		* 101 当前属性不存在
@@ -131,14 +131,22 @@ class Point {
 			errorCode: 200 
 		}
 
-		if (intKeyArr.indexOf(key) > -1) {		// 当前传入值是数字
-			result.result = (String(value) - 0 == value);
+		result.value = value;
+		if (numberArr.indexOf(key) > -1) {		// 当前传入值是数字
+			result.result = uitl.isNumber(value);
 			result.except = 'number';
-			result.value = value;
-		} else if (booleanArr.indexOf(key) > -1) {
-			result.result = true;
+			result.errorCode = 201;
+
+		} else if (booleanArr.indexOf(key) > -1) {	// 传入的是bool值
+			result.result = uitl.isBoolean(value);
 			result.except = 'bool';
-			result.value = Boolean(value);
+			result.errorCode = 201
+
+		} else if (zeroToOne.indexOf(key) > -1) {
+			result.result = uitl.isNumber(value) && value >= 0 && value <= 1;
+			result.except = 'number(0 ~ 1)';
+
+			result.errorCode = 201
 		} else {
 			result.errorCode = 101;
 		}
@@ -266,6 +274,27 @@ class Point {
 				speed -= frication * (_speed + Math.abs(gravity)) * t;
 			}
 			return speed;
+		}
+	}
+
+	/*
+	* 工具函数
+	*/
+	_publicUtil () {
+		function isNumber (val) {
+			return String(val) - 0 == val;
+		}
+
+		function isBoolean (val) {
+			if (val == 'false' || val == 'undefined') {
+				return false;
+			} else {
+				return typeof val == 'boolean';
+			}
+		}
+		return {
+			isNumber,
+			isBoolean
 		}
 	}
 }
