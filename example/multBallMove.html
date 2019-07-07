@@ -11,12 +11,11 @@
 </head>
 <body>
 <canvas id="canvas" width="500" height="500"></canvas>
-<script src="Point.class.js"></script>
+<script src="../lib/Point.class.js"></script>
 <script>
 
 var ctx = document.getElementById('canvas').getContext('2d');
-// 左上角到左下角的运动
-var startX = 0, startY = 0, r = 5, speed = 0, t = 1, endX = 500, endY = 500;
+var startX = 100, startY = 0, r = 5, speed = 0, t = 1, endY = 500, direction = 1;
 
 function draw (x, y, r, color) {
 	ctx.beginPath();
@@ -26,7 +25,7 @@ function draw (x, y, r, color) {
 	ctx.fill();
 }
 function getRandomBall(ball) {
-	ball.setPosition(getRanomdNum(0, 300), getRanomdNum(0, 500));
+	ball.setPosition(getRanomdNum(0, 500), getRanomdNum(0, 300));
 	ball.r = getRanomdNum(5, 15);
 	// ball.frame = getRanomdNum(10, 40);	// 注释该行小球按照相同的帧率运动
 	ball.color = 'rgb('+ [getRanomdNum(0, 255), getRanomdNum(0, 255), getRanomdNum(0, 255)].join(',') +')';
@@ -41,46 +40,46 @@ function getRanomdNum (from, to) {
 
 
 var ballArr = new Array();
-var ballCount = 100;
-for (var i = 0; i < ballCount; i++) {
-	var ball = new Point({endX: endX, endY, endY});
-	ball.setValue('speedX', 40);
-	ball.setValue('speedY', 40);	// 这里可以设置0,那么就只由单轴运动了
+for (var i = 0; i < 100; i++) {
+	var ball = new Point({endY: endY});
+	ball.setValue('gravityY', 10);
 	ballArr[i] = getRandomBall(ball);
 }
+
+
 
 var timer = setInterval(function () {
 	ctx.clearRect(0, 0, 500, 500);
 	ballArr.forEach(function (val, index) {
-		moveBall(val.r, val.color, 1 && val.frame, val);
+		moveBall(val.r, val.color, val.frame, val);
 	})
 }, 10)
+
+Array(10).map(function () {
+	return 1;
+})
 
 function moveBall (r, color, frame, ballInstance) {
 	if (ballInstance.stopMove) return;
 	ballInstance.movement(frame || 10, function (data) {
 		draw(data.x, data.y, r, color);
-		
-		/*
-		* 一定要注意的是，一但物体运动到自己想要的位置
-		* 如果想要转向，需要重新设置下一次的终点，否则就会出现原地不动，或者跑出去不回来的现象
-		*/
+		if (data.speedY == 0) {
 
-		if (data.x == endX) {
-			ballInstance.setValue('endX', startX);
-			ballInstance.setDirection(-1, 1);	// 设置转向
-		} else if (data.x == startX){
-			ballInstance.setValue('endX', endX);
-			ballInstance.setDirection(-1, 1);	// 设置转向
-		}
-
-		if (data.y == endY) {
-			ballInstance.setValue('endY', startY);
 			ballInstance.setDirection(1, -1);	// 设置转向
-		} else if (data.y == startY){
 			ballInstance.setValue('endY', endY);
-			ballInstance.setDirection(1, -1);	// 设置转向
-		}	
+		} else {
+			if (data.y == endY) {	// 到达下边界
+				// 当到达下边界时，如果速度小于1px,我们认为小球停止了
+				// 这里不做判断也可，在运行一段时间后，point类的速度会降低到0
+				// 收到控制减少代码的运行量
+				if (data.speedY < 0.1) {	
+					ballInstance.stopMove = true;
+					return;
+				}
+				ballInstance.setDirection(1, -1);	// 设置转向
+				ballInstance.setValue('endY', startY);
+			}
+		}
 	})
 	return 0;
 }
