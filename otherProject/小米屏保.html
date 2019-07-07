@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Document</title>
+<style>
+#canvas {
+	background: #000;
+}	
+
+</style>
+</head>
+<body>
+<canvas id="canvas" width="500" height="500"></canvas>
+
+<script>
+
+var ctx = document.getElementById('canvas').getContext('2d');
+var PI = Math.PI;
+var centerPoint = [250, 250];
+var angleObj = getAgleFn();
+var r = 3;	// 基础半径
+var howLong = 210;		// 距离中心点多远
+var gap = 15;		// 每层收缩的位移
+var singleArc = 15; // 单次旋转的弧度
+var midCount = Math.ceil(1 / 2 * (howLong / gap) - 1);	// 中间层
+var imgColor = getColor();
+
+function doLoop (preAngle) {
+	var distance = howLong;
+	var level = 0;	// 第几层
+	var hd = 0;	// 弧度
+	
+	// 清空画布
+	ctx.clearRect(-centerPoint[0], -centerPoint[1], 500, 500);
+	// 预转角度
+
+	ctx.rotate(preAngle / 360 * PI);
+	while (distance >= 0) {
+		distance -= gap;
+		level++;
+		hd += singleArc;
+
+		for (var i = 0; i <= 360;) {
+			var x = distance * angleObj.sinArr[i];
+			var y = distance * angleObj.cosArr[i];
+			var size = 3 / 4 * Math.sqrt(midCount - Math.abs(midCount - level));
+			drawArc(x, y, size * r, imgColor);
+			i += singleArc;
+		}
+		ctx.rotate(singleArc / 360 * PI);
+	}
+	ctx.rotate(-1 * (hd + preAngle) / 360 * PI );
+}
+
+
+void function () {
+	var arc = 0;
+	// 移动圆心,方便绘制
+	ctx.translate(centerPoint[0], centerPoint[1]);
+	setInterval(function () {
+		doLoop(arc++);
+		arc %= 360;
+	}, 30)
+}()
+
+// 获取弧度的正弦余弦值
+function getAgleFn () {
+	var PI = Math.PI;
+	var sinArr = [], cosArr = [];
+	for (var i = 0; i <= 360; i++) {
+		sinArr.push(Math.sin(i / 180 * PI));
+		cosArr.push(Math.cos(i / 180 * PI));
+	}
+	return {
+		sinArr,
+		cosArr
+	}
+}
+
+function getColor () {
+	return '#fff';
+	return 'rgb('+ [getRandom(0, 255), getRandom(0, 255), getRandom(0, 255)].join(',') +')';
+
+}
+
+function getRandom (f, t) {
+	return parseInt(Math.random() * (t - f) + f);
+}
+
+function drawArc (x, y, r, color) {
+	ctx.beginPath();
+	ctx.fillStyle = color;
+	ctx.arc(x, y, r, 0, Math.PI * 2, false);
+	ctx.fill();
+	ctx.closePath();
+}
+
+</script>
+</body>
+</html>
