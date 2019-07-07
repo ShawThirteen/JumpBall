@@ -1,15 +1,15 @@
 # MovePoint
 
-**一个小的运动计算类库**
-**Point类只关心数字的变化,而不关心物体是什么,做什么运动**
-**我们每次调用类的计算方法也只是为了获取对应数字信息,与物体的运动没有必然关系**
+**一个小的运动计算类库**    
+**Point类只关心数字的变化,而不关心物体是什么,做什么运动**    
+**我们每次调用类的计算方法也只是为了获取对应数字信息,与物体的运动没有必然关系**    
 
 ## 方法的调用:
 ```javascript
 var point = new Point(options);
 ```
-> options是一个对象,可以用来设置物体的运动状态属性
-> 比如起始点(startX, startY)初次的碰撞点 (endX, endY),加速度,运动方向等等数据
+> options是一个对象,可以用来设置物体的运动状态属性    
+> 比如起始点(startX, startY)初次的碰撞点 (endX, endY),加速度,运动方向等等数据    
 
 ##### 如果在实例化时不添加options属性,也可以通过其他方法进行数据设置
 
@@ -21,8 +21,8 @@ point.setValue(key, value);
 ```javascript
 point.setPositon(x, y);	
 ```
->设置当前物体的坐标
->setPosition方法是setValue方法的一个包装,为了快速设置物体的坐标,本质设置还是setValue
+>设置当前物体的坐标    
+>setPosition方法是setValue方法的一个包装,为了快速设置物体的坐标,本质设置还是setValue    
 
 ```javascript
 point.setDirection(dirx, diry); 
@@ -33,8 +33,8 @@ point.setDirection(dirx, diry);
 ```javascript
 point.movement(frame, cb(data));
 ```
-> ponit运动的核心方法,frame代表运动帧率,frame是10的倍数
-> 每一次point计算出新的属性后,将调用cb回调,并传入速度,方向等核心信息
+> ponit运动的核心方法,frame代表运动帧率,frame是10的倍数    
+> 每一次point计算出新的属性后,将调用cb回调,并传入速度,方向等核心信息    
 
 ### 我们不关心使用者是谁,我们只关心它从哪里来,要到哪里去
 -	Point类不关心被使用在何种对象上面
