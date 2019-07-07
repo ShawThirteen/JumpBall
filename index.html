@@ -26,14 +26,14 @@ function draw (x, y, r, color) {
 	ctx.fill();
 }
 
-var ball = new Point({endY: endY});
+var ballRed = new Point({endY: endY});
 var ballBlue = new Point({endY: endY});
 var ballGreen = new Point({endY: endY});
 var ballYellow = new Point();
 ballYellow.setValue('endY', endY);	// 除了通过初始化来设置属性之外,还可以通过设置方法来设置值
 
 // 设置每个球的开始与结束位置
-ball.setPosition(startX, startY);
+ballRed.setPosition(startX, startY);
 ballBlue.setPosition(startX + 50, startY);
 ballGreen.setPosition(startX + 100, startY);
 ballYellow.setPosition(startX + 150, startY);
@@ -41,7 +41,7 @@ ballYellow.setPosition(startX + 150, startY);
 
 var timer = setInterval(function () {
 	ctx.clearRect(0, 0, 500, 500);
-	moveRed(ball)
+	moveRed(ballRed)
 	moveBlue(ballBlue);
 	moveGreen(ballGreen);
 	moveYellow(ballYellow);	// 黄球的调用函数起其实和绿球一致，仅仅时位置不同
@@ -51,6 +51,7 @@ var timer = setInterval(function () {
 /*
 * 红球使用默认设置,无摩擦力,加速度默认9.8,无初始速度
 */
+ballRed.setValue('gravityY', 10);
 
 /*
 * 篮球, 无摩擦力,加速度为0,做匀速运动

@@ -42,6 +42,7 @@ function getRanomdNum (from, to) {
 var ballArr = new Array();
 for (var i = 0; i < 100; i++) {
 	var ball = new Point({endY: endY});
+	ball.setValue('gravityY', 10);
 	ballArr[i] = getRandomBall(ball);
 }
 

@@ -24,7 +24,7 @@ class Point {
 
 	initProps (arg) {
 		var {
-			gravityX = 9.8, gravityY = 9.8,
+			gravityX = 0, gravityY = 0,
 			fricationX = 0, fricationY = 0,
 			directionX = 1, directionY = 1,
 			speedX = 0, 	speedY = 0,
@@ -160,7 +160,9 @@ class Point {
 		}
  	
 		this.delta = 1 / frame; 	// 每帧耗时,单位秒
-		this._changePositionY();
+		this._changePosition('x');
+		this._changePosition('y');
+
 
 		// 抛出必要信息, 位置,速度,指向,加速度,摩擦系数,结束位置
 		var callbackKeyArr = [
@@ -169,6 +171,7 @@ class Point {
 			'directionX', 'directionY', 
 			'speedX', 'speedY',
 			'startX', 'startY',
+			'elasticX',	'elasticY',
 			'endX', 'endY',
 			'x', 'y'
 		];
@@ -180,34 +183,37 @@ class Point {
 	}
 
 	/*
-	* y轴方向上的物体运动
+	* 轴方向上的物体运动
 	*/
-	_changePositionY () {
+	_changePosition (axis) {
+		axis = axis.toLowerCase();	// 传入参数不区分大小写
+		var upAxis = axis.toUpperCase();
 		var _this = this;
-		var t = this.delta,
-			gravity = this.gravityY * this.directionY,		
-			endY = this.endY,
-			speed = this.speedY,
-			_speed = this._speedY,
-			elastic = this.elasticY,	// 弹性碰撞损耗
-			nolinear = this.nolinearY,
-			frication = this.fricationY;	// 单位时间的摩擦系数
+		var t = this.delta,						// 单位时间
+			direction = this['direction' + upAxis],		// 当前运动方向
+			gravity = this['gravity' + upAxis] * direction,		// 加速度	
+			end = this['end' + upAxis],				// 终点
+			speed = this['speed' + upAxis],			// 速度
+			_speed = this['_speed' + upAxis],			// 速度存量
+			elastic = this['elastic' + upAxis],	// 弹性碰撞损耗
+			nolinear = this['nolinear' + upAxis],		// 非线性
+			frication = this['frication' + upAxis];	// 单位时间的摩擦系数
 
 		var currentDistance = speed * t + 1 / 2 * gravity * t * t ;	// 当前这一个单位时间内，运动的距离
 		var currentDistanceAbs = currentDistance;		// 存一下绝对值
-		var recentDistance = Math.abs(_this.y - endY);		// 本次位移距离终点实际的距离值
+		var recentDistance = Math.abs(_this[axis] - end);		// 本次位移距离终点实际的距离值
 
 		if (currentDistance < 0) {
 			currentDistance = recentDistance;
 		}
 		
-		currentDistance *= _this.directionY;
+		currentDistance *= direction;
 
+		var recentDuring = 0;	// 当前实际运动的时间,保留8位有效数字
 		if (currentDistanceAbs >= recentDistance) {	// 碰撞,一旦发生碰撞当前点的位置就定了
 			var sqrt4ac = Math.sqrt(speed * speed + 2 * gravity * recentDistance);	// sqrt(b^2 - 4ac)
-			var recentDuring = 0;	// 当前实际运动的时间,保留8位有效数字
-
-			_this.y = endY;
+			
+			_this[axis] = end;
 			if (gravity == 0) {	// 匀速运动
 				recentDuring = (recentDistance / speed);
 			} else {
@@ -224,15 +230,21 @@ class Point {
 			speed -= speed * (1 - elastic);
 		} else {		// 当前没碰撞
 			var vDelta = gravity * t;	// 本次速度变化值
-			if (speed + vDelta <= 0) {	// 速度在这里是标量，速度的方向已经由dircection确定
-				recentDuring = speed / gravity;	// 当前实际运动时间
-				
-				_this.y += speed / 2 * recentDuring;
-				speed = 0;
+
+			if (gravity == 0) {	// 匀速运动
+				_this[axis] += currentDistance;
 			} else {
-				_this.y += currentDistance;
-				speed += vDelta;
+				if (speed + vDelta <= 0) {	// 速度在这里是标量，速度的方向已经由dircection确定
+					recentDuring = speed / gravity;	// 当前实际运动时间
+					
+					_this[axis] += speed / 2 * recentDuring;
+					speed = 0;
+				} else {
+					_this[axis] += currentDistance;
+					speed += vDelta;
+				}
 			}
+			
 			speed = getSpeed(speed, t);
 		}
 		
@@ -240,7 +252,7 @@ class Point {
 			speed = 0;	// 静止
 		}
 
-		_this.speedY = speed;	// 保存数据
+		_this['speed' + upAxis] = speed;	// 保存数据
 		return;
 		/*
 		* @params speed [double] 当前的速度
