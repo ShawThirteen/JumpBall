@@ -44,8 +44,8 @@ var ballArr = new Array();
 var ballCount = 100;
 for (var i = 0; i < ballCount; i++) {
 	var ball = new Point({endX: endX, endY, endY});
-	ball.setValue('gravityX', 10);
-	ball.setValue('gravityY', 10);	// 这里可以设置0,那么就只由单轴运动了
+	ball.setValue('speedX', 40);
+	ball.setValue('speedY', 40);	// 这里可以设置0,那么就只由单轴运动了
 	ballArr[i] = getRandomBall(ball);
 }
 
@@ -59,41 +59,27 @@ var timer = setInterval(function () {
 function moveBall (r, color, frame, ballInstance) {
 	if (ballInstance.stopMove) return;
 	ballInstance.movement(frame || 10, function (data) {
-		// console.log(data.x, data.y);
 		draw(data.x, data.y, r, color);
-	
-		if (data.speedX == 0) {
+		
+		/*
+		* 一定要注意的是，一但物体运动到自己想要的位置
+		* 如果想要转向，需要重新设置下一次的终点，否则就会出现原地不动，或者跑出去不回来的现象
+		*/
+
+		if (data.x == endX) {
+			ballInstance.setValue('endX', startX);
 			ballInstance.setDirection(-1, 1);	// 设置转向
+		} else if (data.x == startX){
 			ballInstance.setValue('endX', endX);
-		} else {
-			if (data.x == endX) {	// 到达下边界
-				// 当到达下边界时，如果速度小于1px,我们认为小球停止了
-				// 这里不做判断也可，在运行一段时间后，point类的速度会降低到0
-				// 收到控制减少代码的运行量
-				if (data.speedX < 0.1) {	
-					ballInstance.stopMove = true;
-					return;
-				}
-				ballInstance.setDirection(-1, 1);	// 设置转向
-				ballInstance.setValue('endX', startX);
-			}
+			ballInstance.setDirection(-1, 1);	// 设置转向
 		}
 
-		if (data.speedY == 0) {
+		if (data.y == endY) {
+			ballInstance.setValue('endY', startY);
 			ballInstance.setDirection(1, -1);	// 设置转向
+		} else if (data.y == startY){
 			ballInstance.setValue('endY', endY);
-		} else {
-			if (data.y == endY) {	// 到达下边界
-				// 当到达下边界时，如果速度小于1px,我们认为小球停止了
-				// 这里不做判断也可，在运行一段时间后，point类的速度会降低到0
-				// 收到控制减少代码的运行量
-				if (data.speedY < 0.1) {	
-					ballInstance.stopMove = true;
-					return;
-				}
-				ballInstance.setDirection(1, -1);	// 设置转向
-				ballInstance.setValue('endY', startY);
-			}
+			ballInstance.setDirection(1, -1);	// 设置转向
 		}	
 	})
 	return 0;
